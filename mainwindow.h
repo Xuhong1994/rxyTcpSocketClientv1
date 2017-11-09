@@ -93,6 +93,10 @@ private:
     void print_matrix(vector<vector<T> > matrix);
     void show_path();
     Mat newimage;
+    Mat image_path;
+    void smooth(vector<vector<int> > path, float weight_data, float  weight_smooth, float tolerance );
+    vector<vector<int>> newpath;
+
 
 
 };

@@ -284,7 +284,6 @@ void MainWindow::plotResultImage(QVector<Result> resVector)
 
   //  qDebug()<<resVector.size();
     bool rec_flag = false, tri_flag = false, star_flag = false, heart_flag = false;
-    static int count=0;
 
     QPoint centerOfRect, centerOfTri,centerOfStar, centerOfHeart;
     for(int i=0 ; i<resVector.size(); i++)
@@ -362,21 +361,24 @@ void MainWindow::plotResultImage(QVector<Result> resVector)
 
 //            imshow("temp", newimage);
 //            imwrite("/home/xh/housePicture/niaokan_45.jpg",newimage);
+  static  int index =0;
+static  float angleOfTarget =0;
 
- if( (resVector.size() == 4) && rec_flag && tri_flag && star_flag && heart_flag)
+ if( (resVector.size() == 4) && rec_flag && tri_flag && star_flag && heart_flag&&(index ==0 ))
  //       if(1)
     {
+        index  = index +1;
         float angleOfCar = angle(centerOfStar, centerOfHeart) -CV_PI;
-        float angleOfTarget = angle( centerOfTri ,centerOfRect) -CV_PI;
+         angleOfTarget = angle( centerOfTri ,centerOfRect) -CV_PI;
         QPoint centerOfCar = (centerOfHeart+ centerOfStar)/2;
         QPoint centerOfTarget =(centerOfRect + centerOfTri)/2;
         init = vector<int>({centerOfCar.x(),centerOfCar.y()});  //此处x,y的位置应该互换
        goal = vector<int>({centerOfTarget.x(),centerOfTarget.y()}); //此处x,y的位置应该互换
-      cv::rectangle(newimage,Rect(init[0],init[1],10,10),cvScalar(255,0,0),2);
-         cv::rectangle(newimage,Rect(goal[0],goal[1],10,10),cvScalar(255,0,0),2);
+      cv::rectangle(newimage,Rect(init[0],init[1],10,10),cvScalar(255,0,0),2);  //起始点像素坐标
+         cv::rectangle(newimage,Rect(goal[0],goal[1],10,10),cvScalar(255,0,0),2);//目标点像素坐标
 
-//        cv::rectangle(imageclone,cvPoint(339,308),cvPoint(430,375),cvScalar(0,255,0),2);
-        cv::rectangle(newimage,cvPoint(298,329),cvPoint(334,364),cvScalar(0,255,0),2);
+        cv::rectangle(imageclone,cvPoint(339,308),cvPoint(430,375),cvScalar(0,255,0),2); //障碍物像素坐标 18+5+3
+        cv::rectangle(newimage,cvPoint(272,303),cvPoint(360,390),cvScalar(0,255,0),1);// 障碍物加车宽的像素坐标
 
 
 //       init = vector<int>({248,289});
@@ -387,7 +389,9 @@ void MainWindow::plotResultImage(QVector<Result> resVector)
 //       QPoint obs_end  = QPoint(334,364);  //此处x,y的位置不互换
 
 //       create_grid({{obs_start,obs_end}});
-     create_grid({{{298,329},{334,364}}});
+   //  create_grid({{{298,329},{334,364}}});
+          create_grid({{{272,303},{360,390}}});  //将车的宽度考虑进去 18像素 鸟瞰图
+
 
      //  print_matrix(grid);
       create_heuristc(goal);
@@ -398,8 +402,16 @@ void MainWindow::plotResultImage(QVector<Result> resVector)
 //     goal = vector<int>({396,327});
 
      search(grid,init,goal,cost);
+     smooth(path,0.5,0.1,0.000001);
        show_path();
-//       count = count+1;
+       image_path = newimage;
+//       if(index == 0)
+//       {
+//           carControl({centerOfCar.x(), centerOfCar.y(), angleOfCar}, {centerOfTarget.x(), centerOfTarget.y(), angleOfTarget});
+//           index = index +1;
+
+//       }
+      //index = index+1;
 
 //       cv::rectangle(newimage,cvPoint(248,289),cvPoint(258,299),cvScalar(255,0,0),2);
 //       cv::rectangle(newimage,cvPoint(298,329),cvPoint(334,364),cvScalar(0,255,0),2);
@@ -421,13 +433,59 @@ void MainWindow::plotResultImage(QVector<Result> resVector)
 
    //     carControl( errorOfPos, angleOfCar);
 //        qDebug() << angleOfCar;
-//        carControl({centerOfCar.x(), centerOfCar.y(), angleOfCar}, {centerOfTarget.x(), centerOfTarget.y(), angleOfTarget});  hh
+//       centerOfTarget.x() = path[1][1];
+//       centerOfTarget.y()=path[1][0]; // path的坐标系恰巧与像素坐标系相反
+          centerOfTarget.setX( path[6][1]);
+          centerOfTarget.setY( path[6][0]);
+     //   carControl({centerOfCar.x(), centerOfCar.y(), angleOfCar}, {path[1][1], path[1][0], 0});
+        carControl({centerOfCar.x(), centerOfCar.y(), angleOfCar}, {centerOfTarget.x(),centerOfTarget.y(), angleOfTarget});
 //        qDebug()<<angleOfCar;
 //        qDebug()    <<centerOfCar;
-    //    qDebug()<<centerOfCar.x()<<centerOfCar.y()<<centerOfTarget.x()<<centerOfTarget.y()<<endl; hh
+       qDebug()<<"start:  "<<centerOfCar.x()<<centerOfCar.y()<<centerOfTarget.x()<<centerOfTarget.y()<<endl;
 
     }
-    else
+   else if( (resVector.size() == 4) && rec_flag && tri_flag && star_flag && heart_flag&&(index !=0 ))
+ {
+
+      static int  j =6;
+     QPoint centerOfCar = (centerOfHeart+ centerOfStar)/2;
+     float angleOfCar = angle(centerOfStar, centerOfHeart) -CV_PI;
+     qDebug()<<centerOfCar.x()<<centerOfCar.y()<<path[j][1]<<path[j][0]<<endl;
+
+     cv::rectangle(image_path,cvPoint(centerOfCar.x(),centerOfCar.y()),cvPoint(centerOfCar.x()+1,centerOfCar.y()+1),cvScalar(0,0,255),1);
+     //                image.at<Vec3b>(i,j)[0] = 0;
+     //                image.at<Vec3b>(i,j)[1] = 0;
+     //                image.at<Vec3b>(i,j)[2] = 0;
+                             imshow("temp2", image_path);
+                             imwrite("/home/xh/housePicture/niaokan_45.jpg",image_path);
+
+//                        imshow("temp", newimage);
+//                        imwrite("/home/xh/housePicture/niaokan_45.jpg",newimage);
+
+
+     if( abs(angleOfCar-angleOfTarget)<0.1 && abs( centerOfCar.x() - path[j][1]) <5 && abs( centerOfCar.y() - path[j][0]) <5 &&(j <path.size())  )
+     {
+          j= j +6;
+          cout<<"hello j:"<<j<<endl;
+         carControl({centerOfCar.x(), centerOfCar.y(), angleOfCar}, {path[j][1], path[j][0], angleOfTarget});
+
+//          if( j<path.size()-1-4)
+//          {
+//         carControl({centerOfCar.x(), centerOfCar.y(), angleOfCar}, {path[j][1], path[j][0], angleOfTarget});
+//          }
+//          else
+//          {
+//           carControl({centerOfCar.x(), centerOfCar.y(), angleOfCar}, {path[j][1], path[j][0], angleOfTarget});
+//          }
+     }
+     else
+     {
+     carControl({centerOfCar.x(), centerOfCar.y(), angleOfCar}, {path[j][1], path[j][0], angleOfTarget});
+     }
+   //  cout <<"j: "<<j<<endl;
+
+ }
+ else
     {
             carControl({0,0,0}, {0,0,0});
 //        carControl( QPoint(0,0), 0.0);
@@ -582,7 +640,7 @@ void MainWindow::carControl(Pos  cur, Pos tar){
 
     int errorOfXPos =  R_inv.at<float>(0,0) *error.x_pos +  R_inv.at<float>(0,1) *error.y_pos; //将目标点的坐标投影到小车坐标系上
     int errorOfYPos =  R_inv.at<float>(1,0) *error.x_pos +  R_inv.at<float>(1,1) *error.y_pos;
-    qDebug()<<errorOfXPos <<" "<<errorOfYPos;
+    qDebug()<<"errorOfXPos_Tran: "<<errorOfXPos <<"errorOfYPos_Tran: "<<errorOfYPos;
     if(abs(error.theta) < 0.1)
     {
         if( abs(errorOfXPos) > 5)
@@ -797,6 +855,7 @@ void MainWindow::create_grid(vector<vector<QPoint> > obs)
   }
   void MainWindow::show_path()
   {
+      path = newpath;
       for(int i=0; i<path.size();i++)
       {
 
@@ -821,4 +880,25 @@ void MainWindow::create_grid(vector<vector<QPoint> > obs)
 
   }
 
+  void MainWindow::smooth(vector<vector<int> > path, float weight_data, float weight_smooth, float tolerance)
+  {
+      newpath = path;
+      float change= tolerance;
+    //  print_matrix(newpath);
+     while( change >= tolerance )
+     {
+         change =0;
+      for(int i=1; i<path.size()-1; i++)
+      {
+          for(int j=0; j<path[0].size(); j++)
+          {
+              float aux = newpath[i][j];
+              newpath[i][j] = newpath[i][j]+0.5*(path[i][j]-newpath[i][j]);
+              newpath[i][j] =  newpath[i][j] +0.1*( newpath[i+1][j] +newpath[i-1][j]-2* newpath[i][j] );
+              change = change + abs(aux - newpath[i][j]);
+          }
+    }
+     // cout<<"change:"<<change<<endl;
 
+      }
+  }
