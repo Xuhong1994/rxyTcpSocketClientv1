@@ -80,11 +80,12 @@ private:
     vector< vector<int> >  grid;
     vector< vector<int> >  heuristic;
     vector<int> init;
-    int cost;
+    vector<int> cost;
     vector<int> goal;
     vector<vector<int>> delta;
-   vector<char> delta_name{'^','<','V','>'};
-    void search(vector<vector<int> > grid, vector<int> init, vector<int> goal, int cost);
+ //  vector<char> delta_name{'^','<','V','>'};
+   vector<char> delta_name{'↑','←',' ↓' ,' →','↖','↙',' ↘','↗'};
+    void search(vector<vector<int> > grid, vector<int> init, vector<int> goal, vector<int> cost);
     void create_grid(vector<vector<QPoint>> );
     void create_heuristc(vector<int> goal);
 

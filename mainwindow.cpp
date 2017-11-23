@@ -75,10 +75,14 @@ MainWindow::MainWindow(QWidget *parent) ://构造函数初始化
   ,clientHasConnected(false) ,
   grid(480,vector<int>(640,0)),
   heuristic(480,vector<int>(640,0)),
-  delta{{-2,0},{0,-2},{2,0},{0,2}}
+//  cost{2,2,2,2,2.828,2.828,2.828,2.828},  
+//  cost{2,2,2,2,4,4,4,4},
+//  delta{{-2,0},{0,-2},{2,0},{0,2},{-2,-2},{2,-2},{2,2},{-2,2}}
+    cost{2,2,2,2},
+    delta{{-2,0},{0,-2},{2,0},{0,2}}
 
 {
-    cost =1;
+  // cost =1;
     cameraMatrix = (cv::Mat_<double>(3,3)<<602.1305028623834, 0, 305.425554714981,  0, 602.5595514999234, 229.9865955799518,
     0, 0, 1);
     distCoeffs = (cv::Mat_<double>(1,5)<<0.1831737947819169, -0.520313602279158, -0.005860976837188498, -0.002718407129263247, -0.7854837254841104);
@@ -207,6 +211,7 @@ void MainWindow::on_connect_pushButton_clicked()//当connect按下之后录视�
 
    send_data_to_client("request");
 
+//   setCarSpeed(0, 0, -1000, -4, 0, 0);
 
     //setCarSpeed(1,0,0);
 }
@@ -228,6 +233,19 @@ void MainWindow::on_disconnect_pushButton_clicked()
 
 void MainWindow::setCarSpeed(int x, int ex, int y, int ey, int z, int ez)
 {
+//    x = 1000;
+//    ex = -4;
+//    y = -1000;
+//    ey = -4;
+//    z = 0;
+//    ez = 0;
+//        x = -1000;
+//        ex = -4;
+//        y = 0;
+//        ey = 0;
+//        z = 0;
+//        ez = 0;
+
     QString command = QString("s %1 %2 %3 %4 %5 %6 \n").arg(x).arg(ex).arg(y).arg(ey).arg(z).arg(ez);
 //    qDebug()<<command;
     send_data_to_client(command);
@@ -283,9 +301,9 @@ void MainWindow::plotResultImage(QVector<Result> resVector)
 
 
   //  qDebug()<<resVector.size();
-    bool rec_flag = false, tri_flag = false, star_flag = false, heart_flag = false;
+    bool rec_flag = false, tri_flag = false, star_flag = false, heart_flag = false, diamond_flag = false, arrow_flag =false;
 
-    QPoint centerOfRect, centerOfTri,centerOfStar, centerOfHeart;
+    QPoint centerOfRect, centerOfTri,centerOfStar, centerOfHeart,diamond_begin,diamond_end, arrow_begin,arrow_end;
     for(int i=0 ; i<resVector.size(); i++)
     {
 
@@ -353,6 +371,37 @@ void MainWindow::plotResultImage(QVector<Result> resVector)
 
         }
 
+        else if( resVector[i].label == "diamond")
+        {
+            cv::rectangle(imageclone,cvPoint(resVector[i].xMin,resVector[i].yMin),cvPoint(resVector[i].xMax,resVector[i].yMax),cvScalar(0,255,0),2);
+            cv::putText(imageclone,"diamond",cv::Point2d(resVector[i].xMin,resVector[i].yMin),   CV_FONT_HERSHEY_SIMPLEX,0.5,CV_RGB(0,255,0));
+            diamond_flag =true;
+//            centerOfHeart = (QPoint( (resVector[i].xMin+resVector[i].xMax)/2, (resVector[i].yMin+resVector[i].yMax)/2));
+       //     centerOfHeart = correct(QPoint( (resVector[i].xMin+resVector[i].xMax)/2, (resVector[i].yMin+resVector[i].yMax)/2));
+
+       // QPoint p1, p2;
+           diamond_begin = correct(QPoint(resVector[i].xMin, resVector[i].yMin))-QPoint(30,30);
+           diamond_end = correct(QPoint(resVector[i].xMax, resVector[i].yMax))+QPoint(30,30);
+        //   centerOfHeart = QPoint((p1.x() + p2.x()) / 2 , (p1.y() + p2.y()) / 2);
+
+        }
+
+        else if( resVector[i].label == "arrow")
+        {
+            cv::rectangle(imageclone,cvPoint(resVector[i].xMin,resVector[i].yMin),cvPoint(resVector[i].xMax,resVector[i].yMax),cvScalar(0,255,0),2);
+            cv::putText(imageclone,"arrow",cv::Point2d(resVector[i].xMin,resVector[i].yMin),  CV_FONT_HERSHEY_SIMPLEX,0.5,CV_RGB(0,255,0));
+            arrow_flag =true;
+//            centerOfHeart = (QPoint( (resVector[i].xMin+resVector[i].xMax)/2, (resVector[i].yMin+resVector[i].yMax)/2));
+  //          centerOfHeart = correct(QPoint( (resVector[i].xMin+resVector[i].xMax)/2, (resVector[i].yMin+resVector[i].yMax)/2));
+
+      //  QPoint p1, p2;
+           arrow_begin = correct(QPoint(resVector[i].xMin, resVector[i].yMin))-QPoint(30,30);
+           arrow_end= correct(QPoint(resVector[i].xMax, resVector[i].yMax))+QPoint(30,30);
+    //       centerOfHeart = QPoint((p1.x() + p2.x()) / 2 , (p1.y() + p2.y()) / 2);
+
+        }
+
+
     }
 
  //   cv::rectangle(newimage,cvPoint(228,198),cvPoint(301,242),cvScalar(255,0,0),2);
@@ -364,7 +413,8 @@ void MainWindow::plotResultImage(QVector<Result> resVector)
   static  int index =0;
 static  float angleOfTarget =0;
 
- if( (resVector.size() == 4) && rec_flag && tri_flag && star_flag && heart_flag&&(index ==0 ))
+ //if( (resVector.size() == 6) && rec_flag && tri_flag && star_flag && heart_flag&& diamond_flag && arrow_flag &&(index ==0 ))
+ if( (resVector.size() >= 5) && rec_flag && tri_flag && star_flag && heart_flag&&  arrow_flag)
  //       if(1)
     {
         index  = index +1;
@@ -372,13 +422,16 @@ static  float angleOfTarget =0;
          angleOfTarget = angle( centerOfTri ,centerOfRect) -CV_PI;
         QPoint centerOfCar = (centerOfHeart+ centerOfStar)/2;
         QPoint centerOfTarget =(centerOfRect + centerOfTri)/2;
-        init = vector<int>({centerOfCar.x(),centerOfCar.y()});  //此处x,y的位置应该互换
-       goal = vector<int>({centerOfTarget.x(),centerOfTarget.y()}); //此处x,y的位置应该互换
+        init = vector<int>({centerOfCar.x(),centerOfCar.y()});  //此处x,y的位置bu 应该互换
+       goal = vector<int>({centerOfTarget.x(),centerOfTarget.y()}); //此处x,y的位置bu应该互换
       cv::rectangle(newimage,Rect(init[0],init[1],10,10),cvScalar(255,0,0),2);  //起始点像素坐标
          cv::rectangle(newimage,Rect(goal[0],goal[1],10,10),cvScalar(255,0,0),2);//目标点像素坐标
 
-        cv::rectangle(imageclone,cvPoint(339,308),cvPoint(430,375),cvScalar(0,255,0),2); //障碍物像素坐标 18+5+3
-        cv::rectangle(newimage,cvPoint(272,303),cvPoint(360,390),cvScalar(0,255,0),1);// 障碍物加车宽的像素坐标
+        //cv::rectangle(imageclone,cvPoint(339,308),cvPoint(430,375),cvScalar(0,255,0),2); //障碍物像素坐标 18+5+3
+        //cv::rectangle(newimage,cvPoint(272,303),cvPoint(360,390),cvScalar(0,255,0),1);// 障碍物加车宽的像素坐标
+        cv::rectangle(newimage,cvPoint(diamond_begin.x(),diamond_begin.y()),cvPoint(diamond_end.x(),diamond_end.y()),cvScalar(0,255,0),1);// 障碍物加车宽的像素坐标
+        cv::rectangle(newimage,cvPoint(arrow_begin.x(),arrow_begin.y()),cvPoint(arrow_end.x(),arrow_end.y()),cvScalar(0,255,0),1);// 障碍物加车宽的像素坐标
+      //  cv::rectangle(newimage,cvPoint(272,303),cvPoint(360,390),cvScalar(0,255,0),1);// 障碍物加车宽的像素坐标
 
 
 //       init = vector<int>({248,289});
@@ -390,7 +443,7 @@ static  float angleOfTarget =0;
 
 //       create_grid({{obs_start,obs_end}});
    //  create_grid({{{298,329},{334,364}}});
-          create_grid({{{272,303},{360,390}}});  //将车的宽度考虑进去 18像素 鸟瞰图
+        create_grid({ {{diamond_begin.x(),diamond_begin.y()},{diamond_end.x(),diamond_end.y()}} ,{{arrow_begin.x(),arrow_begin.y()},{arrow_end.x(),arrow_end.y()}} });  //将车的宽度考虑进去 18像素 鸟瞰图
 
 
      //  print_matrix(grid);
@@ -401,8 +454,21 @@ static  float angleOfTarget =0;
 //      init = vector<int>({289,248});
 //     goal = vector<int>({396,327});
 
+    // if(!( (arrow_begin.x()<=centerOfCar.x()<= arrow_end.x()) && (arrow_begin.y() <=centerOfCar.y()<=arrow_end.y())  ) )
+     qDebug() << centerOfCar.x() << ", " << arrow_begin.x() << ", " << arrow_end.x();
+      qDebug() << centerOfCar.y() << ", " << arrow_begin.y() << ", " << arrow_end.y();
+       if( !((centerOfCar.x() >= arrow_begin.x()) && (centerOfCar.x() <=arrow_end.x()) && (centerOfCar.y() >= arrow_begin.y()) && (centerOfCar.y() <=arrow_end.y()) ))
+//      if(((centerOfCar.x() < arrow_begin.x()) ||(centerOfCar.x() > arrow_end.x())) &&((centerOfCar.y() < arrow_begin.y()) ||(centerOfCar.y()> arrow_end.y())) )
+    {
+        cout<<"xhh"<<endl;
      search(grid,init,goal,cost);
      smooth(path,0.5,0.1,0.000001);
+   }
+       else
+       {
+           cout<<"error happend"<<endl;
+       }
+
        show_path();
        image_path = newimage;
 //       if(index == 0)
@@ -435,22 +501,22 @@ static  float angleOfTarget =0;
 //        qDebug() << angleOfCar;
 //       centerOfTarget.x() = path[1][1];
 //       centerOfTarget.y()=path[1][0]; // path的坐标系恰巧与像素坐标系相反
-          centerOfTarget.setX( path[6][1]);
-          centerOfTarget.setY( path[6][0]);
-     //   carControl({centerOfCar.x(), centerOfCar.y(), angleOfCar}, {path[1][1], path[1][0], 0});
-        carControl({centerOfCar.x(), centerOfCar.y(), angleOfCar}, {centerOfTarget.x(),centerOfTarget.y(), angleOfTarget});
+//          centerOfTarget.setX( path[15][1]);
+//          centerOfTarget.setY( path[15][0]);
+//        carControl({centerOfCar.x(), centerOfCar.y(), angleOfCar}, {centerOfTarget.x(),centerOfTarget.y(),angleOfTarget });
 //        qDebug()<<angleOfCar;
 //        qDebug()    <<centerOfCar;
-       qDebug()<<"start:  "<<centerOfCar.x()<<centerOfCar.y()<<centerOfTarget.x()<<centerOfTarget.y()<<endl;
+      cout<<"start:  "<<centerOfCar.x()<<" "<<centerOfCar.y()<<centerOfTarget.x()<<centerOfTarget.y()<<endl;
 
     }
-   else if( (resVector.size() == 4) && rec_flag && tri_flag && star_flag && heart_flag&&(index !=0 ))
+ //  else if( (resVector.size() == 6) && rec_flag && tri_flag && star_flag && heart_flag && diamond_flag && arrow_flag&&(index !=0 ))
+  if( (resVector.size() >= 5) && rec_flag && tri_flag && star_flag && heart_flag && arrow_flag)
  {
 
-      static int  j =6;
+      static int  j =15;
      QPoint centerOfCar = (centerOfHeart+ centerOfStar)/2;
      float angleOfCar = angle(centerOfStar, centerOfHeart) -CV_PI;
-     qDebug()<<centerOfCar.x()<<centerOfCar.y()<<path[j][1]<<path[j][0]<<endl;
+   //  qDebug()<<centerOfCar.x()<<centerOfCar.y()<<path[j][1]<<path[j][0]<<endl;
 
      cv::rectangle(image_path,cvPoint(centerOfCar.x(),centerOfCar.y()),cvPoint(centerOfCar.x()+1,centerOfCar.y()+1),cvScalar(0,0,255),1);
      //                image.at<Vec3b>(i,j)[0] = 0;
@@ -463,30 +529,33 @@ static  float angleOfTarget =0;
 //                        imwrite("/home/xh/housePicture/niaokan_45.jpg",newimage);
 
 
-     if( abs(angleOfCar-angleOfTarget)<0.1 && abs( centerOfCar.x() - path[j][1]) <5 && abs( centerOfCar.y() - path[j][0]) <5 &&(j <path.size())  )
+     if(  abs( centerOfCar.x() - path[j][1]) <=5 && abs( centerOfCar.y() - path[j][0]) <=5 &&(j <path.size())  )
      {
-          j= j +6;
+          j= j +15;
           cout<<"hello j:"<<j<<endl;
-         carControl({centerOfCar.x(), centerOfCar.y(), angleOfCar}, {path[j][1], path[j][0], angleOfTarget});
+        carControl({centerOfCar.x(), centerOfCar.y(), angleOfCar}, {path[j][1], path[j][0], angleOfTarget});
 
-//          if( j<path.size()-1-4)
+//          if(abs(centerOfCar.x() -goal[0]) <40 && abs(centerOfCar.y()-goal[1])<40 )
 //          {
-//         carControl({centerOfCar.x(), centerOfCar.y(), angleOfCar}, {path[j][1], path[j][0], angleOfTarget});
+//         carControl({centerOfCar.x(), centerOfCar.y(), angleOfCar}, {path[j][1], path[j][0],angleOfTarget});
 //          }
 //          else
 //          {
-//           carControl({centerOfCar.x(), centerOfCar.y(), angleOfCar}, {path[j][1], path[j][0], angleOfTarget});
+//           carControl({centerOfCar.x(), centerOfCar.y(), angleOfCar}, {path[j][1], path[j][0], - CV_PI/2});
+//           cout<<angleOfTarget<<"*********************xh"<<endl;
 //          }
      }
      else
      {
      carControl({centerOfCar.x(), centerOfCar.y(), angleOfCar}, {path[j][1], path[j][0], angleOfTarget});
+   //  cout <<"hello xh"<<endl;
      }
    //  cout <<"j: "<<j<<endl;
 
  }
  else
     {
+       cout<<"not found enough"<<endl;
             carControl({0,0,0}, {0,0,0});
 //        carControl( QPoint(0,0), 0.0);
 
@@ -618,6 +687,7 @@ void MainWindow::carControl(QPoint errorOfPosition, float  errorOfAngle)
 
 
 void MainWindow::carControl(Pos  cur, Pos tar){
+    static int  num =0;
     Pos error = cur - tar;
     float errorOfTheta =0;
     float errorOfX =0;
@@ -640,16 +710,18 @@ void MainWindow::carControl(Pos  cur, Pos tar){
 
     int errorOfXPos =  R_inv.at<float>(0,0) *error.x_pos +  R_inv.at<float>(0,1) *error.y_pos; //将目标点的坐标投影到小车坐标系上
     int errorOfYPos =  R_inv.at<float>(1,0) *error.x_pos +  R_inv.at<float>(1,1) *error.y_pos;
-    qDebug()<<"errorOfXPos_Tran: "<<errorOfXPos <<"errorOfYPos_Tran: "<<errorOfYPos;
+    qDebug()<<"num:"<<num<<"errorOfXPos_Tran: "<<errorOfXPos <<"errorOfYPos_Tran: "<<errorOfYPos;
     if(abs(error.theta) < 0.1)
     {
-        if( abs(errorOfXPos) > 5)
+        if( abs(errorOfXPos) >=5)
         {
             errorOfX = errorOfXPos < 0 ? 0.1 : -0.1;
         }
-        if( abs(errorOfYPos) > 5)
+        if( abs(errorOfYPos) >=5)
+
         {
            errorOfY = errorOfYPos > 0 ? 0.1 : -0.1;
+           //cout<<"errorOfY"<<errorOfY<<endl;
         }
 
     }
@@ -662,9 +734,10 @@ void MainWindow::carControl(Pos  cur, Pos tar){
     vector<int> TargetOfY = GetBaseAndExponent((errorOfY));
     vector<int> TargetOfTheta = GetBaseAndExponent(errorOfTheta);
    setCarSpeed(TargetOfX[0],TargetOfX[1],TargetOfY[0], TargetOfY[1], TargetOfTheta[0],TargetOfTheta[1]);
+   num = num +1;
 }
 
-void MainWindow::search(vector<vector<int> >grid, vector<int> init, vector<int> goal, int cost)
+void MainWindow::search(vector<vector<int> >grid, vector<int> init, vector<int> goal, vector<int> cost)
 {
     vector<vector<int>> closed(grid.size(),vector<int>(grid[0].size(),0));
     vector<vector<int>> expand(grid.size(),vector<int>(grid[0].size(),-1));
@@ -695,6 +768,7 @@ void MainWindow::search(vector<vector<int> >grid, vector<int> init, vector<int> 
          if(open.size() == 0)
          {
              resign =true;
+             path.clear();
              cout<<"fail"<<endl;
          }
          else
@@ -712,16 +786,18 @@ void MainWindow::search(vector<vector<int> >grid, vector<int> init, vector<int> 
              int f = next[0];
              expand[x][y] = count;
              count +=1;
-           //  cout<<x<<" "<<y<<" "<<g<<endl;
+            cout<<"count:"<<count<<endl;
+           // cout<<x<<" "<<y<<" "<<g<<endl;
 
              //判断是否是目标点
-             if((abs(x- goal[0]) <2) && (abs(y -goal[1])) <2)
+             if((abs(x- goal[0]) <3) && (abs(y -goal[1])) <3)
 //             if( x== goal[0] && y== goal[1])
              {
                  found = true;
-                cout<< f<<" "<<g<<" "<<h<<" "<<x<<" "<<y<<endl;
+                //cout<< f<<" "<<g<<" "<<h<<" "<<x<<" "<<y<<endl;
                 QPoint u{x,y};
                 result[u.x()][u.y()]='*';
+                path.clear();
                 path.push_back({u.x(),u.y()});
                  int j=0;
                 while( u.x() !=init[0] || u.y()!= init[1])
@@ -789,7 +865,7 @@ void MainWindow::search(vector<vector<int> >grid, vector<int> init, vector<int> 
                     //  static int j=0;
                       if( x2 >=0 && x2<grid.size() && y2>=0 && y2 <grid[0].size() && grid[x2][y2]==0 && closed[x2][y2]==0)
                      {
-                       int g2  = g+cost;
+                       int g2  = g+cost[i];
                        int h2 = heuristic[x2][y2];
                        int f2 = g2 + h2;
                        open.push_back({f2,g2,h2,x2,y2});
